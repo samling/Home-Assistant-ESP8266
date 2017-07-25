@@ -17,10 +17,10 @@
 
 #include <RCSwitch.h>
 
-#define Desk_ON         333251
-#define Desk_OFF        333260
-#define Nightstand_ON   333107
-#define Nightstand_OFF  333116
+#define Desk_ON         333107
+#define Desk_OFF        333116
+#define Nightstand_ON   333251
+#define Nightstand_OFF  333260
 #define Unassigned_ON   333571
 #define Unassigned_OFF  333580
 #define LivingRoom_ON   335107
@@ -51,7 +51,6 @@ IRsend irsend(4);
 RCSwitch s = RCSwitch();
 
 void setup() {
- 
   // RF Data
   pinMode(TX_PIN, OUTPUT);
 
@@ -100,7 +99,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.println();
   if (String(topic).startsWith("esp8266/light")) {
     // Desk lamp 1 (corner)
-    if (strcmp(topic, "esp8266/light/desk")==0) {
+    if (strcmp(topic, "esp8266/light/desk1")==0) {
       if  ((char)payload[0] == '1') {         // Power On
         s.send(Desk_ON, TX_BIT);
         client.publish("esp8266/light/desk/status", "Sent power on");
