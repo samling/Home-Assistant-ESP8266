@@ -1,3 +1,5 @@
+#include <ArduinoJson.h>
+
 #include <Arduino.h>
 #include <Stream.h>
 
@@ -61,12 +63,12 @@
 
 //AWS IOT config, change these:
 char wifi_ssid[]       = "ssid";
-char wifi_password[]   = "pass";
+char wifi_password[]   = "password";
 char aws_endpoint[]    = "xxxxxxxxxxxx.iot.us-east-1.amazonaws.com";
-char aws_key[]         = "aws_iam_id";
+char aws_key[]         = "aws_iam_key";
 char aws_secret[]      = "aws_iam_secret";
 char aws_region[]      = "us-east-1";
-const char* aws_topic  = "$aws/things/device_name/shadow/update";
+const char* aws_topic  = "$aws/things/your_device/shadow/update";
 int port = 443;
 
 //MQTT config
@@ -116,7 +118,17 @@ void messageArrived(MQTT::MessageData& md)
   Serial.print("Payload ");
   char* msg = new char[message.payloadlen+1]();
   memcpy (msg,message.payload,message.payloadlen);
-  Serial.println(msg);
+
+  // Parse the payload and print it
+  StaticJsonBuffer<200> jsonBuffer;
+  JsonObject& root = jsonBuffer.parseObject(msg);
+  const char* devicename = root["device_name"];
+  const char* cmd = root["command"];
+  root.printTo(Serial);
+
+  // Handle the response
+  sendCommand(devicename, cmd); // Todo: Callback response
+  
   delete msg;
 }
 
@@ -224,7 +236,7 @@ void setup() {
 
   if (connect ()){
     subscribe ();
-    sendmessage ();
+    //sendmessage ();
   }
   
   // Transmitter is connected to Arduino Pin #10  
@@ -233,53 +245,38 @@ void setup() {
   s.setPulseLength(TX_PULSE);
 }
 
-//void callback(char* topic, byte* payload, unsigned int length) {
-//  Serial.print("Message arrived [");
-//  Serial.print(topic);
-//  Serial.print("] ");
-//  for (int i = 0; i < length; i++) {
-//    Serial.print((char)payload[i]);
-//  }
-//  Serial.println();
-//  if (String(topic).startsWith("esp8266/light")) {
-//    // Desk lamp 1 (corner)
-//    if (strcmp(topic, "esp8266/light/desk1")==0) {
-//      if  ((char)payload[0] == '1') {         // Power On
-//        s.send(Desk_ON, TX_BIT);
-//        client.publish("esp8266/light/desk/status", "Sent power on");
-//      } else if ((char)payload[0] == '0') {   // Power Off
-//        s.send(Desk_OFF, TX_BIT);
-//        client.publish("esp8266/light/desk/status", "Sent power on");
-//      } else {
-//        Serial.println("Invalid message");
-//      }
-//    }
-//    // Nightstand lamp
-//    if (strcmp(topic, "esp8266/light/nightstand")==0) {
-//      if  ((char)payload[0] == '1') {         // Power On
-//        s.send(Nightstand_ON, TX_BIT);
-//        client.publish("esp8266/light/nightstand/status", "Sent power on");
-//      } else if ((char)payload[0] == '0') {   // Power Off
-//        s.send(Nightstand_OFF, TX_BIT);
-//        client.publish("esp8266/light/nightstand/status", "Sent power on");
-//      } else {
-//        Serial.println("Invalid message");
-//      }
-//    }
-//    // Desk lamp 2 (near cat tree)
-//    if (strcmp(topic, "esp8266/light/desk2")==0) {
-//      if  ((char)payload[0] == '1') {         // Power On
-//        s.send(Desk2_ON, TX_BIT);
-//        client.publish("esp8266/light/desk2/status", "Sent power on");
-//      } else if ((char)payload[0] == '0') {   // Power Off
-//        s.send(Desk2_OFF, TX_BIT);
-//        client.publish("esp8266/light/desk2/status", "Sent power off");
-//      } else {
-//        Serial.println("Invalid message");
-//      }
-//    }
-//  }
-//
+void sendCommand(const char* devicename, const char* cmd) {
+    // Desk lamp 1 (corner)
+    if ((strcmp(devicename, "desk")==0) || (strcmp(devicename, "desk lamp")==0)) {
+      if (strcmp(cmd, "ON")==0) {         // Power On
+        s.send(Desk_ON, TX_BIT);
+      } else if (strcmp(cmd, "OFF")==0) {   // Power Off
+        s.send(Desk_OFF, TX_BIT);
+      } else {
+        Serial.println("Invalid message");
+      }
+    }
+    // Nightstand lamp
+    if (strcmp(devicename, "nightstand")==0) {
+      if (strcmp(cmd, "ON")==0) {         // Power On
+        s.send(Nightstand_ON, TX_BIT);
+      } else if (strcmp(cmd, "OFF")==0) {   // Power Off
+        s.send(Nightstand_OFF, TX_BIT);
+      } else {
+        Serial.println("Invalid message");
+      }
+    }
+    // Desk lamp 2 (near cat tree)
+    if (strcmp(devicename, "other lamp")==0) {
+      if (strcmp(cmd, "ON")==0) {         // Power On
+        s.send(Desk2_ON, TX_BIT);
+      } else if (strcmp(cmd, "OFF")==0) {   // Power Off
+        s.send(Desk2_OFF, TX_BIT);
+      } else {
+        Serial.println("Invalid message");
+      }
+    }
+  }
 //  if (String(topic).startsWith("esp8266/ir")) {
 //    // TV
 //    if (strcmp(topic, "esp8266/ir/tv")==0) {
@@ -462,8 +459,6 @@ void setup() {
 //        Serial.println("Invalid message");
 //      }
 //    }
-//  }
-//}
 
 void loop() {
   //keep the mqtt up and running
